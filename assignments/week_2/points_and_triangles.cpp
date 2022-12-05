@@ -67,7 +67,7 @@ class Point
             return distance_points;
         }
 
-        Point rotate_point(double angle)
+        Point rotated(double angle)
         {
             // Initialization of the output
             Point point_rotated;
@@ -82,7 +82,7 @@ class Point
             return point_rotated;
         }
 
-        Point rotate_point(double angle, Point other)
+        Point rotated(double angle, Point other)
         {
             // Initialization of the output
             Point point_rotated;
@@ -106,22 +106,65 @@ class Point
             return point_rotated;
         }
 
+        Point& rotate(double angle) 
+        { 
+            // Simplification of the notation
+            double s = sin(angle);
+            double c = cos(angle);
+
+            double x_temp = x;
+
+            // rotate point
+            x = x * c - y * s;
+            y = x_temp * s + y * c;
+
+            return *this; 
+        }
+
+        Point& rotate(double angle, const Point other) 
+        {
+            // Simplification of the notation
+            double s = sin(angle);
+            double c = cos(angle);
+
+            // Translating the point back to the origin
+            x -= other.x;
+            y -= other.y;
+
+            double x_temp = x;
+
+            // rotate point
+            x = x * c - y * s;
+            y = x_temp * s + y * c;
+
+            // Applying the translation back again 
+            x += other.x;
+            y += other.y;
+            this -> x += other.y;
+
+            return *this;
+        }
+
 };
 
 int main(){
-    Point A(4, 2);
+    Point A(2, 4);
     Point B = {3, 5};
     Point C(4, 5);
 
-    //C = A + B;
     B += A;
 
     double dist_orig = A.distance();
     double dist_points = B.distance(C);
 
-    double pi = atan(1) * 4;
-    Point D = A.rotate_point(pi/2);
-    Point E = A.rotate_point(pi / 2, B);
+    double pi = atan(1)*4;
+    Point D = A.rotated(pi/2);
+    Point E = A.rotated(pi/2, B);
+
+    Point F = {0, 1};
+    Point G = {2, 4};
+    F.rotate(pi / 2);
+    G.rotate(pi/2, B);
 
     // Testing Part I of the assignment
     std::cout << "A: " << A.x << " " << A.y << std::endl;
@@ -131,5 +174,7 @@ int main(){
     std::cout << "distance between B and C: " << dist_points << std::endl;
     std::cout << "Rotation of A around the origin: " << D.x << " " << D.y << std::endl;
     std::cout << "Rotation of A around B: " << E.x << " " << E.y << std::endl;
+    std::cout << "Rotation of F around the origin: " << F.x << " " << F.y << std::endl;
+    std::cout << "Rotation of G around B: " << E.x << " " << E.y << std::endl;
 
 }
