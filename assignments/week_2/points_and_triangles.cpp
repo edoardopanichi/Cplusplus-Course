@@ -166,6 +166,7 @@ int main(){
     F.rotate(pi / 2);
     G.rotate(pi/2, B);
 
+
     // Testing Part I of the assignment
     std::cout << "A: " << A.x << " " << A.y << std::endl;
     std::cout << "B: " << B.x << " " << B.y << std::endl;
