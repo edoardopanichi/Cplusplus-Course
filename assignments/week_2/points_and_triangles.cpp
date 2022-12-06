@@ -140,7 +140,7 @@ class Point
             // Applying the translation back again 
             x += other.x;
             y += other.y;
-            
+
             return *this;
         }
 
@@ -238,7 +238,7 @@ class Triangle
             return *this;
         }
 
-        double area() 
+        double area() const
         {
             // Using the shoelace formula
             double area = 0.5 * abs(a.x * b.y - c.x * b.y + c.x * a.y - a.x * c.y + b.x * c.y - b.x * a.y);
@@ -299,9 +299,6 @@ int main(){
     Triangle XYZ(X, Y, Z);
     double area_XYZ = XYZ.area();
 
-    Triangle TEST = XYZ.rotated(pi, A);
-    XYZ.rotate(pi, A);
-
     // Testing Part II of the assignment
     std::cout << "\nPART II\n" << "Triangle ABC is: " << "Vertex 1: " << ABC.a.x << " " << ABC.a.y << " Vertex 2: " << ABC.b.x << " " << ABC.b.y << " Vertex 3: " << ABC.c.x << " " << ABC.c.y << std::endl;
     std::cout << "Triangle ABC translated by A is: " << "Vertex 1: " << translated_ABC.a.x << " " << translated_ABC.a.y << " Vertex 2: " << translated_ABC.b.x << " " << translated_ABC.b.y << " Vertex 3: " << translated_ABC.c.x << " " << translated_ABC.c.y << std::endl;
@@ -311,8 +308,5 @@ int main(){
     std::cout << "Triangle ACD rotated by pi: " << "Vertex 1: " << ACD.a.x << " " << ACD.a.y << " Vertex 2: " << ACD.b.x << " " << ACD.b.y << " Vertex 3: " << ACD.c.x << " " << ACD.c.y << std::endl;
     std::cout << "Triangle BCD rotated by pi around A: " << "Vertex 1: " << BCD.a.x << " " << BCD.a.y << " Vertex 2: " << BCD.b.x << " " << BCD.b.y << " Vertex 3: " << BCD.c.x << " " << BCD.c.y << std::endl;
     std::cout << "Area of triangle XYZ: " <<  area_XYZ << std::endl;
-    std::cout << "Triangle XYZ rotated by pi around A: " << "Vertex 1: " << XYZ.a.x << " " << XYZ.a.y << " Vertex 2: " << XYZ.b.x << " " << XYZ.b.y << " Vertex 3: " << XYZ.c.x << " " << XYZ.c.y << std::endl;
-    std::cout << "Triangle XYZ (TEST) rotated by pi around A: " << "Vertex 1: " << TEST.a.x << " " << TEST.a.y << " Vertex 2: " << TEST.b.x << " " << TEST.b.y << " Vertex 3: " << TEST.c.x << " " << TEST.c.y << std::endl;
-
 
 }
