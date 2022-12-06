@@ -140,8 +140,7 @@ class Point
             // Applying the translation back again 
             x += other.x;
             y += other.y;
-            this -> x += other.y;
-
+            
             return *this;
         }
 
@@ -196,9 +195,55 @@ class Triangle
             // creating the new triangle to return
             Triangle rotated_triang = *this;
             
-        }
-        // Triangle rotated(double angle, Point other) { ... }
+            // rotating each element of the new triangle
+            rotated_triang.a.rotate(angle);
+            rotated_triang.b.rotate(angle);
+            rotated_triang.c.rotate(angle);
 
+            return rotated_triang;
+        }
+
+        Triangle rotated(double angle, const Point &other) const
+        {
+            // creating the new triangle to return
+            Triangle rotated_triang = *this;
+            
+            // rotating each element of the new triangle around the input Point
+            rotated_triang.a.rotate(angle, other);
+            rotated_triang.b.rotate(angle, other);
+            rotated_triang.c.rotate(angle, other);
+
+            return rotated_triang;
+        }
+
+        Triangle &rotate(double angle) 
+        {
+            
+            // rotating each element of the triangle
+            a.rotate(angle);
+            b.rotate(angle);
+            c.rotate(angle);
+
+            return *this;
+        }
+
+        Triangle &rotate(double angle, const Point &other)
+        {
+            
+            // rotating each element of the triangle around the input Point
+            a.rotate(angle, other);
+            b.rotate(angle, other);
+            c.rotate(angle, other);
+
+            return *this;
+        }
+
+        double area() 
+        {
+            // Using the shoelace formula
+            double area = 0.5 * abs(a.x * b.y - c.x * b.y + c.x * a.y - a.x * c.y + b.x * c.y - b.x * a.y);
+            return area;
+        }
 };
 
 int main(){
@@ -212,8 +257,8 @@ int main(){
     double dist_orig = A.distance();
     double dist_points = B.distance(C);
 
-    double pi = atan(1)*4;
-    Point D = A.rotated(pi/2);
+    double pi = M_PI;
+    Point D = A.rotated(pi / 2);
     Point E = A.rotated(pi/2, B);
 
     Point F(0, 1);
@@ -233,15 +278,41 @@ int main(){
     std::cout << "Rotation of G around B: " << E.x << " " << E.y << std::endl;
 
     // ASSIGNMENT PART II
-    Triangle tr_test;
+    Triangle test_1;
     Triangle ABC(A, B, C);
+    Triangle ACD(A, C, D);
+    Triangle BCD(B, C, D);
 
-    Triangle translated = ABC.translated(A);
-    tr_test.translate(C);
+    Triangle translated_ABC = ABC.translated(A);
+    test_1.translate(C);
+
+    Triangle test_2 = ABC.rotated(pi);
+    Triangle test_3 = ABC.rotated(pi, A);
+
+    ACD.rotate(pi);
+    BCD.rotate(pi, A);
+
+    // For the area we create a simply triangle to verify the correctness of the code
+    Point X; //(0, 0)
+    Point Y(0, 3);
+    Point Z(5, 0);
+    Triangle XYZ(X, Y, Z);
+    double area_XYZ = XYZ.area();
+
+    Triangle TEST = XYZ.rotated(pi, A);
+    XYZ.rotate(pi, A);
 
     // Testing Part II of the assignment
     std::cout << "\nPART II\n" << "Triangle ABC is: " << "Vertex 1: " << ABC.a.x << " " << ABC.a.y << " Vertex 2: " << ABC.b.x << " " << ABC.b.y << " Vertex 3: " << ABC.c.x << " " << ABC.c.y << std::endl;
-    std::cout << "Triangle ABC translated by A is: " << "Vertex 1: " << translated.a.x << " " << translated.a.y << " Vertex 2: " << translated.b.x << " " << translated.b.y << " Vertex 3: " << translated.c.x << " " << translated.c.y << std::endl;
-    std::cout << "Triangle test translated by C is: " << "Vertex 1: " << tr_test.a.x << " " << tr_test.a.y << " Vertex 2: " << tr_test.b.x << " " << tr_test.b.y << " Vertex 3: " << tr_test.c.x << " " << tr_test.c.y << std::endl;
+    std::cout << "Triangle ABC translated by A is: " << "Vertex 1: " << translated_ABC.a.x << " " << translated_ABC.a.y << " Vertex 2: " << translated_ABC.b.x << " " << translated_ABC.b.y << " Vertex 3: " << translated_ABC.c.x << " " << translated_ABC.c.y << std::endl;
+    std::cout << "Triangle test_1 translated by C is: " << "Vertex 1: " << test_1.a.x << " " << test_1.a.y << " Vertex 2: " << test_1.b.x << " " << test_1.b.y << " Vertex 3: " << test_1.c.x << " " << test_1.c.y << std::endl;
+    std::cout << "Triangle ABC rotated by pi: " << "Vertex 1: " << test_2.a.x << " " << test_2.a.y << " Vertex 2: " << test_2.b.x << " " << test_2.b.y << " Vertex 3: " << test_2.c.x << " " << test_2.c.y << std::endl;
+    std::cout << "Triangle ABC rotated by pi around A: " << "Vertex 1: " << test_3.a.x << " " << test_3.a.y << " Vertex 2: " << test_3.b.x << " " << test_3.b.y << " Vertex 3: " << test_3.c.x << " " << test_3.c.y << std::endl;
+    std::cout << "Triangle ACD rotated by pi: " << "Vertex 1: " << ACD.a.x << " " << ACD.a.y << " Vertex 2: " << ACD.b.x << " " << ACD.b.y << " Vertex 3: " << ACD.c.x << " " << ACD.c.y << std::endl;
+    std::cout << "Triangle BCD rotated by pi around A: " << "Vertex 1: " << BCD.a.x << " " << BCD.a.y << " Vertex 2: " << BCD.b.x << " " << BCD.b.y << " Vertex 3: " << BCD.c.x << " " << BCD.c.y << std::endl;
+    std::cout << "Area of triangle XYZ: " <<  area_XYZ << std::endl;
+    std::cout << "Triangle XYZ rotated by pi around A: " << "Vertex 1: " << XYZ.a.x << " " << XYZ.a.y << " Vertex 2: " << XYZ.b.x << " " << XYZ.b.y << " Vertex 3: " << XYZ.c.x << " " << XYZ.c.y << std::endl;
+    std::cout << "Triangle XYZ (TEST) rotated by pi around A: " << "Vertex 1: " << TEST.a.x << " " << TEST.a.y << " Vertex 2: " << TEST.b.x << " " << TEST.b.y << " Vertex 3: " << TEST.c.x << " " << TEST.c.y << std::endl;
+
 
 }
