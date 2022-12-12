@@ -5,3 +5,9 @@
 # Unignore all dirs
 !*/
 tempCodeRunnerFile
+
+# Ignore the valgrind outputs
+valgrind-out.txt
+
+# Ignore the .vscode folder
+.vscode
