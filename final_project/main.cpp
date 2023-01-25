@@ -309,7 +309,6 @@ Vector<typename std::common_type<T,U>::type> operator*(const Matrix<T>& lhs, con
     Vector<typename std::common_type<T,U>::type> result(lhs.get_n_rows());
     for (auto it = lhs.get_entries().begin(); it != lhs.get_entries().end(); ++it) 
     {
-        //std::cout << *it << std::endl;
         int i = it->first.first;
         int j = it->first.second;
         T value = it->second;
@@ -320,10 +319,73 @@ Vector<typename std::common_type<T,U>::type> operator*(const Matrix<T>& lhs, con
 
 
 template<typename T>
+// Function to solve the linear system Ax = b using the BiCGStab method
 int bicgstab(const Matrix<T>& A, const Vector<T>& b, Vector<T>& x, T tol = (T)1e-8, int maxiter = 100)
 {
-    // Your implementation of the bicgstab function starts here
-    return 0;
+    
+    // Initialize variables
+
+    // VECTORS
+    // Initial guess from input: x
+    Vector<T> r_0 = b - A * x; // Initial guessed residual, so the error of the initial guess 
+    Vector<T> q_0 = b - A * x; // q_0 is somehow the direction of the search (similar to a gradient).
+    // On wikipedia it is defined as r_hat.
+
+    Vector<T> v(r_0.len());
+    Vector<T> p(r_0.len());
+    Vector<T> v_0(r_0.len());
+    Vector<T> p_0(r_0.len());
+
+    Vector<T> h(x.len()); // h is the first new guess. Each cycle, the guess is updated twice.
+    Vector<T> s(r_0.len()); // s is the first new residual. Each cycle, the residual is updated twice.
+    Vector<T> t(r_0.len()); 
+
+    // SCALARS
+    T rho_0 = T(1); 
+    T alpha = T(1); // alpha is the step size
+    T omega_0 = T(1);
+
+    T rho_k = 0;
+    T beta = 0;
+    T omega_k = 0;
+
+    // Iterate. In each cycle, the guess is updated twice.
+    // The first update is saved in h, and the second in x. For the same reason, the residual is updated twice.
+    for (int i = 0; i < maxiter; i++) 
+    {
+        rho_k = dot(q_0, r_0);
+        beta = (rho_k / rho_0) * (alpha / omega_0); 
+        p = r_0 + beta * (p_0 - omega_0 * v_0); // p is the direction of the search
+        v = A * p; 
+        alpha = rho_k / dot(q_0, v); // update of the step size
+        h = x + alpha * p; // update of the guess
+
+        if (norm(b - A * h) < tol)
+        {
+            x = h;
+            return i;
+        }
+
+        s = r_0 - alpha * v; // s is the new residual
+        t = A * s; 
+        omega_k = dot(t, s) / dot(t, t);
+        x = h + omega_k * s; // update of the guess
+        std::cout << "solution found is: " << std::endl;
+        x.info();
+        std::cout << "iteration number: " << i << std::endl;
+
+        if (norm(b - A * x) < tol) {
+            return i;
+        }
+
+        // new values become old values for the next iteration
+        r_0 = s - omega_k * t; 
+        rho_0 = rho_k;
+        omega_0 = omega_k;
+    }
+
+    // Return number of iterations
+    return -1;
 }
 
 template<typename T>
@@ -419,14 +481,38 @@ int main(int argc, char* argv[])
     // Testing () operator of matrix class
     std::cout << "B(0, 0) = " << B({0, 0}) << std::endl;
 
-    // Testing the get function of matrix class
-    std::cout << "B.get(0, 0) = " << B.get({0, 0}) << std::endl;
+    // // Testing the get function of matrix class
+    // std::cout << "B.get(0, 0) = " << B.get({0, 0}) << std::endl;
 
     // Testing the * operator of matrix class with a vector
     Vector<double> v14({1, 2, 3});
     auto v15 = B * v14;
     v15.info();
 
+    // Testing the bicgstab function
+    Matrix<double> A2(4, 4);
+    A2[{0, 0}] = 4.0;
+    A2[{0, 1}] = 2.0;
+    // A2[{0, 2}] = 0.0;
+    A2[{0, 3}] = 1.0;
+    A2[{1, 0}] = 3.0;
+    // A2[{1, 1}] = 4.0;
+    // A2[{1, 2}] = 1.0;
+    A2[{1, 3}] = 2.0;
+    // A2[{2, 0}] = 0.0;
+    A2[{2, 1}] = 1.0;
+    A2[{2, 2}] = 1.0;
+    A2[{2, 3}] = 1.0;
+    // A2[{3, 0}] = 0.0;
+    A2[{3, 1}] = 2.0;
+    A2[{3, 2}] = 1.0;
+    // A2[{3, 3}] = 4.0;
+    A2.info();
+    Vector<double> b2({-1, -0.5, -1, 2});
+    Vector<double> x2({0, 0, 0, 0});
+
+    auto iterations = bicgstab(A2, b2, x2, 1e-6);
+    std::cout << "bicgstab iterations: " << iterations << std::endl;
     
     // Your testing of the simplest walker class starts here
 
