@@ -20,7 +20,13 @@ class Vector
         Vector(const int& length)
         :   length(length),
             data(new T[length])
-        {}
+        {
+            // Setting all the values to zero by default.
+            for (int i = 0; i < length; ++i)
+            {
+                data[i] = 0;
+            }
+        }
         // Copy constructor
         Vector(const Vector& other)
         :   length(other.length),
@@ -306,12 +312,13 @@ Vector<typename std::common_type<T,U>::type> operator*(const Matrix<T>& lhs, con
     {
         throw std::invalid_argument("Matrix and vector must have compatible dimensions");
     }
-    Vector<typename std::common_type<T,U>::type> result(lhs.get_n_rows());
+
+    Vector<typename std::common_type<T, U>::type> result(lhs.get_n_rows());
     for (auto it = lhs.get_entries().begin(); it != lhs.get_entries().end(); ++it) 
     {
-        int i = it->first.first;
-        int j = it->first.second;
-        T value = it->second;
+        int i = it->first.first; // this is the row index of the element of the matrix
+        int j = it->first.second; // this is the column index of the element of the matrix
+        T value = it->second; // this is the value of the element of the matrix at position (i,j)
         result[i] += value * rhs[j];
     }
     return result;
@@ -328,8 +335,7 @@ int bicgstab(const Matrix<T>& A, const Vector<T>& b, Vector<T>& x, T tol = (T)1e
     // VECTORS
     // Initial guess from input: x
     Vector<T> r_0 = b - A * x; // Initial guessed residual, so the error of the initial guess 
-    Vector<T> q_0 = b - A * x; // q_0 is somehow the direction of the search (similar to a gradient).
-    // On wikipedia it is defined as r_hat.
+    Vector<T> q_0 = r_0; // On wikipedia q_0 is defined as r_hat.
 
     Vector<T> v(r_0.len());
     Vector<T> p(r_0.len());
@@ -338,7 +344,7 @@ int bicgstab(const Matrix<T>& A, const Vector<T>& b, Vector<T>& x, T tol = (T)1e
 
     Vector<T> h(x.len()); // h is the first new guess. Each cycle, the guess is updated twice.
     Vector<T> s(r_0.len()); // s is the first new residual. Each cycle, the residual is updated twice.
-    Vector<T> t(r_0.len()); 
+    Vector<T> t(r_0.len());
 
     // SCALARS
     T rho_0 = T(1); 
@@ -351,18 +357,21 @@ int bicgstab(const Matrix<T>& A, const Vector<T>& b, Vector<T>& x, T tol = (T)1e
 
     // Iterate. In each cycle, the guess is updated twice.
     // The first update is saved in h, and the second in x. For the same reason, the residual is updated twice.
-    for (int i = 0; i < maxiter; i++) 
+    for (int i = 0; i < maxiter; ++i) 
     {
         rho_k = dot(q_0, r_0);
-        beta = (rho_k / rho_0) * (alpha / omega_0); 
+        beta = (rho_k / rho_0) * (alpha / omega_0);
         p = r_0 + beta * (p_0 - omega_0 * v_0); // p is the direction of the search
-        v = A * p; 
+        v = A * p;
         alpha = rho_k / dot(q_0, v); // update of the step size
         h = x + alpha * p; // update of the guess
-
+        
         if (norm(b - A * h) < tol)
         {
             x = h;
+            // Print solution before exiting
+            std::cout << "Solution Found is: " << std::endl;
+            x.info();
             return i;
         }
 
@@ -370,34 +379,93 @@ int bicgstab(const Matrix<T>& A, const Vector<T>& b, Vector<T>& x, T tol = (T)1e
         t = A * s; 
         omega_k = dot(t, s) / dot(t, t);
         x = h + omega_k * s; // update of the guess
-        std::cout << "solution found is: " << std::endl;
-        x.info();
-        std::cout << "iteration number: " << i << std::endl;
 
-        if (norm(b - A * x) < tol) {
+        if (norm(b - A * x) < tol) 
+        {
+            // Print solution before exiting
+            std::cout << "Solution Found is: " << std::endl;
+            x.info();
             return i;
         }
 
         // new values become old values for the next iteration
         r_0 = s - omega_k * t; 
+        p_0 = p;
+        v_0 = v;
         rho_0 = rho_k;
-        omega_0 = omega_k;
+        omega_0 = omega_k;        
     }
 
     // Return number of iterations
     return -1;
 }
 
+// Function to implement the Heun integration method
 template<typename T>
+// f is the vector of functions to integrate, y is the vector of initial conditions, h is the step size, and t is the initial time
 void heun(const Vector<std::function<T(Vector<T> const&, T)> >& f, Vector<T>& y, T h, T& t)
 {
-    // Your implementation of the heun function starts here
+    // The method is divided in two steps. The first step is to compute the slope at the current point, like in Euler's method.
+    // The second step is to compute the slope at the point where the first step ends, and then compute the average of the two slopes.
+    // The average is then used to update the current point.
+    
+    // FIRST STEP
+    Vector<T> k_1 = f(y, t); // slope at the current point
+    Vector<T> y_1 = y + h * k_1; // point where the first step ends (Euler's method)
+
+    // SECOND STEP
+    Vector<T> k_2 = f(y_1, t + h); // slope at the point where the first step ends
+    Vector<T> k_avg = (k_1 + k_2) / 2; // average of the two slopes
+    y = y + h * k_avg; // update of the current point
+    t += h; // update of the current time
+    
 };
 
+// Class to implement a model of a 2-DoF Walker. 
 template<typename T>
 class SimplestWalker
 {
-    // Your implementation of the simplest walker class starts here
+    public:
+        // CONSTRUCTORS
+        // Constructor with initial condition (y0 = y(t0)), initial time and slope of the path
+        SimplestWalker(const& Vector<T> y0, T t0, T gamma) 
+        :   y(y0), 
+            t(t0), 
+            slope(gamma)
+        {}
+
+        // METHODS
+        // Function to compute the derivative of the position
+        Vector<T> derivative(const Vector<T>& y) const
+        {
+            Vector<T> y_dot(y.len()); // it contains the derivative of y.
+            
+            // Value of the derivative computed on paper starting from the equations of motion
+            y_dot[0] = y[3]; 
+            y_dot[1] = y[4];
+            y_dot[2] = sin(y[2]-slope) + y[4]^2 * sin(y[1]) - cos(y[2]-slope) * sin(y[1]);
+            y_dot[3] = sin(y[2]-slope);
+
+            return y_dot;
+        }
+
+        // Function to compute the evolution of the system after a time step h
+        const Vector<T>& step(T h)
+        {
+            // The system is integrated using the Heun method
+            heun(derivative, y, h, t);
+            return y;
+        }
+
+
+    private:
+        // ATTRIBUTES
+        Vector<T> y; // Vector of the current position
+        T t; // Current time
+        T slope; // Slope of the path
+    public:
+        Matrix<T> A; // Matrix of the system
+        Vector<T> b; // Vector of the right hand side of the system
 };
 
 int main(int argc, char* argv[])
@@ -491,24 +559,27 @@ int main(int argc, char* argv[])
 
     // Testing the bicgstab function
     Matrix<double> A2(4, 4);
-    A2[{0, 0}] = 4.0;
+    A2[{0, 0}] = 2.0;
     A2[{0, 1}] = 2.0;
     // A2[{0, 2}] = 0.0;
     A2[{0, 3}] = 1.0;
+
     A2[{1, 0}] = 3.0;
     // A2[{1, 1}] = 4.0;
     // A2[{1, 2}] = 1.0;
     A2[{1, 3}] = 2.0;
+
     // A2[{2, 0}] = 0.0;
     A2[{2, 1}] = 1.0;
     A2[{2, 2}] = 1.0;
     A2[{2, 3}] = 1.0;
+    
     // A2[{3, 0}] = 0.0;
     A2[{3, 1}] = 2.0;
     A2[{3, 2}] = 1.0;
     // A2[{3, 3}] = 4.0;
     A2.info();
-    Vector<double> b2({-1, -0.5, -1, 2});
+    Vector<double> b2({-1, -0.5, -1, 3});
     Vector<double> x2({0, 0, 0, 0});
 
     auto iterations = bicgstab(A2, b2, x2, 1e-6);

@@ -2,17 +2,16 @@ import numpy as np
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import bicgstab
 
-R = np.array([[4, 2, 0, 1],
+R = np.array([[2, 2, 0, 1],
               [3, 0, 0, 2],
               [0, 1, 1, 1],
               [0, 2, 1, 0]])
 A = csc_matrix(R)
-b = np.array([-1, -0.5, -1, 2])
+b = np.array([-1, -0.5, -1, 3])
 x0 = np.array([0, 0, 0, 0])
 x, exit_code = bicgstab(A, b, tol=1e-6, maxiter=100, x0=x0)
 print(exit_code)
 print(x)
-
 
 
 # template<typename T>
