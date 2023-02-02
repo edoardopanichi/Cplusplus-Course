@@ -141,6 +141,18 @@ class Vector
             }
             return result;
         }
+        // / operator that divides a vector with a scalar of any type and returns a vector of the common type
+        template<typename U>
+        auto operator/(const U& scalar) const
+        {
+            Vector<typename std::common_type<T,U>::type> result(length);
+            for (int i = 0; i < length; ++i)
+            {
+                result[i] = data[i] / scalar;
+            }
+            return result;
+        }
+
         // * operator that multiplies scalar and vector, and checks that scalar is arithmetic
         template<typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
         friend auto operator*(const U& scalar, const Vector<T>& vec)
@@ -257,26 +269,6 @@ class Matrix
             }
         }
 
-        // Function to get an element of the matrix, using an iterator over all the entries of the map
-        // const T get(const std::pair<int, int>& ij) const
-        // {
-        //     if (ij.first < 0 || ij.first >= n_rows || ij.second < 0 || ij.second >= n_cols)
-        //     {
-        //         throw std::out_of_range("Index out of range");
-        //     }
-        //     for (auto it = entries.begin(); it != entries.end(); ++it) 
-        //     {
-        //         int i = it->first.first;
-        //         int j = it->first.second;
-        //         found_value = it->second;
-        //         if (i == ij.first && j == ij.second) 
-        //             // exit the loop if the element is found
-        //             return found_value;    
-        //     }
-        //     // return a default-constructed T if the element is not found
-        //     return T();
-        // }
-
         // Function to get the number of rows
         const int get_n_rows() const
         {
@@ -370,8 +362,8 @@ int bicgstab(const Matrix<T>& A, const Vector<T>& b, Vector<T>& x, T tol = (T)1e
         {
             x = h;
             // Print solution before exiting
-            std::cout << "Solution Found is: " << std::endl;
-            x.info();
+            // std::cout << "Solution Found is: " << std::endl;
+            // x.info();
             return i;
         }
 
@@ -383,8 +375,8 @@ int bicgstab(const Matrix<T>& A, const Vector<T>& b, Vector<T>& x, T tol = (T)1e
         if (norm(b - A * x) < tol) 
         {
             // Print solution before exiting
-            std::cout << "Solution Found is: " << std::endl;
-            x.info();
+            // std::cout << "Solution Found is: " << std::endl;
+            // x.info();
             return i;
         }
 
@@ -410,11 +402,26 @@ void heun(const Vector<std::function<T(Vector<T> const&, T)> >& f, Vector<T>& y,
     // The average is then used to update the current point.
     
     // FIRST STEP
-    Vector<T> k_1 = f(y, t); // slope at the current point
+    // Define k_1 with the same dimensions of y
+    Vector<T> k_1(y.len()); // slope at the current point
+
+    // For cycle to compute k_1[i] = f[i](y, t)
+    for (int i = 0; i < y.len(); ++i)
+    {
+        k_1[i] = f[i](y, t);
+    }
+    
     Vector<T> y_1 = y + h * k_1; // point where the first step ends (Euler's method)
 
     // SECOND STEP
-    Vector<T> k_2 = f(y_1, t + h); // slope at the point where the first step ends
+    // Define k_2 with the same dimensions of y_1
+    Vector<T> k_2(y.len()); // slope at the point where the first step ends
+
+    // For cycle to compute k_2[i] = f[i](y_1, t + h)
+    for (int i = 0; i < y.len(); ++i)
+    {
+        k_2[i] = f[i](y_1, t + h);
+    }
     Vector<T> k_avg = (k_1 + k_2) / 2; // average of the two slopes
     y = y + h * k_avg; // update of the current point
     t += h; // update of the current time
@@ -428,11 +435,29 @@ class SimplestWalker
     public:
         // CONSTRUCTORS
         // Constructor with initial condition (y0 = y(t0)), initial time and slope of the path
-        SimplestWalker(const& Vector<T> y0, T t0, T gamma) 
+        SimplestWalker(const Vector<T>& y0, T t0, T gamma) 
         :   y(y0), 
             t(t0), 
-            slope(gamma)
-        {}
+            slope(gamma),
+            b(y0.len()), // b is the vector of the right hand side of the system
+            A(y0.len(), y0.len()) // A is the matrix of the system
+        {
+            // Fill Matrix A
+            A[{0, 0}] = 1.0;
+            A[{1, 1}] = 1.0;
+            A[{2, 2}] = 1.0;
+            A[{3, 3}] = 1.0;
+            A[{2, 3}] = -1.0;
+
+            // Fill Vector b
+            b[0] = y[2];
+            b[1] = y[3];
+            b[2] = pow(y[3], 2) * sin(y[0]) - cos(y[1]-slope) * sin(y[0]);
+            b[3] = sin(y[1]-slope);
+        }
+
+        // DESTRUCTOR
+        ~SimplestWalker() {}
 
         // METHODS
         // Function to compute the derivative of the position
@@ -441,10 +466,10 @@ class SimplestWalker
             Vector<T> y_dot(y.len()); // it contains the derivative of y.
             
             // Value of the derivative computed on paper starting from the equations of motion
-            y_dot[0] = y[3]; 
-            y_dot[1] = y[4];
-            y_dot[2] = sin(y[2]-slope) + y[4]^2 * sin(y[1]) - cos(y[2]-slope) * sin(y[1]);
-            y_dot[3] = sin(y[2]-slope);
+            y_dot[0] = y[2]; 
+            y_dot[1] = y[3];
+            y_dot[2] = sin(y[1]-slope) + pow(y[3], 2) * sin(y[0]) - cos(y[1]-slope) * sin(y[0]);
+            y_dot[3] = sin(y[1]-slope);
 
             return y_dot;
         }
@@ -452,9 +477,56 @@ class SimplestWalker
         // Function to compute the evolution of the system after a time step h
         const Vector<T>& step(T h)
         {
+            // Steps of the algorithm:
+            // 1. Update b
+            // 2. Solve the system A * y_dot = b with the function bicgstab to find y_dot
+            // 3. Update y (called y but it represents y_dot) - Done in the function bicgstab
+            // 4. Define f(y, t) according to the result of bicgstab - The form has to be 
+            //    Vector<std::function<T(Vector<T> const&, T)> > - f(y, t) represents y_dot
+            // 5. Integrate the system using the Heun method, that finds the solution 
+            //    (phi, theta, phi_dot, theta_dot) of the system at the next time step.
+            
+            // Copy the initial conditions of y in y0
+            Vector<T> y0 = this->y;
+
+            // Update b
+            update_b();
+
+            // Solve the system
+            // y in input is the initial guess, in output (by reference) is the solution of the system (y_dot)
+            bicgstab(A, b, y, 1e-6, 1000);
+
+            // Define f(y, t)
+            Vector<std::function<T(Vector<T> const&, T)>> f(y.len());
+            f[0] = [this](const Vector<T>& y, T t) {return y[2];};
+            f[1] = [this](const Vector<T>& y, T t) {return y[3];};
+            f[2] = [this](const Vector<T>& y, T t) {return sin(y[1]-slope) + pow(y[3], 2) * sin(y[0]) - cos(y[1]-slope) * sin(y[0]);};
+            f[3] = [this](const Vector<T>& y, T t) {return sin(y[1]-slope);};
+
             // The system is integrated using the Heun method
-            heun(derivative, y, h, t);
+            heun(f, y0, h, t);
+            // The solution is hold in y0. so we copy it in y
+            y = y0;
+
             return y;
+        }
+
+        // Function to update b
+        void update_b()
+        {
+            b[0] = y[2];
+            b[1] = y[3];
+            b[2] = pow(y[3], 2) * sin(y[0]) - cos(y[1]-slope) * sin(y[0]);
+            b[3] = sin(y[1]-slope);
+        }
+
+        // Function to print the content of the object
+        void info() const
+        {
+            std::cout << "Current position: " << std::endl;
+            y.info();
+            std::cout << "Current time: " << t << std::endl;
+            std::cout << "\n\n" <<  std::endl;
         }
 
 
@@ -463,129 +535,34 @@ class SimplestWalker
         Vector<T> y; // Vector of the current position
         T t; // Current time
         T slope; // Slope of the path
-    public:
-        Matrix<T> A; // Matrix of the system
         Vector<T> b; // Vector of the right hand side of the system
+        Matrix<T> A; // Matrix of the system
 };
 
 int main(int argc, char* argv[])
 {   
-    Vector<double> v1; // Default constructor
-    Vector<double> v2(3); // Constructor with length
-    Vector<double> v3(4); // Vector to be moved into v4
-    Vector<double> v4(std::move(v3)); // Move constructor
-    Vector<double> v5(v2); // Copy constructor
-    Vector<double> v6({1, 2, 3, 4, 5}); // Initializer list constructor
-
-    // Printing the content of the vectors.
-    std::cout << "v1: " << std::endl;
-    v1.info();
-    std::cout << "v2: " << std::endl;
-    v2.info();
-    std::cout << "v3: " << std::endl;
-    v3.info();
-    std::cout << "v4: " << std::endl;
-    v4.info();
-    std::cout << "v5: " << std::endl;
-    v5.info();
-    std::cout << "v6: " << std::endl;
-    v6.info();
-
-    v5 = v6; // Copy assignment operator
-
-    std::cout << "v5 after copy assignment: " << std::endl;
-    v5.info();
-
-    v6 = std::move(v5); // Move assignment operator
-
-    std::cout << "v5 after move assignment: " << std::endl;
-    v5.info();
-    std::cout << "v6 after move assignment: " << std::endl;
-    v6.info();
-
-    // Testing the + operator
-    Vector<double> v7({1, 2, 3, 4, 5});
-    Vector<int> v8({1, 2, 3, 4, 5});
-    auto v9 = v7 + v8 - v7;
-    std::cout << "v9: " << std::endl;
-    v9.info();
-
-    // Testing the * operator
-    auto v10 = v9 * 2.0;
-    std::cout << "v10: " << std::endl;
-    v10.info();
-
-    auto v11 = 2.0 * v9;
-    std::cout << "v11: " << std::endl;
-    v11.info();
-    std::cout << "v11 len: " << v11.len() << std::endl;
-
-    // Testing the dot function
-    auto v12 = Vector<double>({1, 2, 3});
-    auto v13 = Vector<double>({3, 1, 2});
-    auto dot_result = dot(v12, v13);
-    std::cout << "dot_result: " << dot_result << std::endl;
-
-    // Testing the norm function
-    auto norm_result = norm(v12);
-    std::cout << "norm_result: " << norm_result << std::endl;
-
-    // Testing the class Matrix
-    Matrix<double> A;
-    Matrix<double> B(3, 3);
-    A.info();
-    B[{0, 0}] = 1.0;
-    B[{0, 1}] = 2.0;
-    B[{0, 2}] = 3.0;
-    B[{1, 0}] = 4.0;
-    B[{1, 1}] = 5.0;
-    B[{1, 2}] = 6.0;
-    B[{2, 0}] = 7.0;
-    B[{2, 1}] = 8.0;
-    B[{2, 2}] = 9.0;
-
-    B.info();
-
-    // Testing () operator of matrix class
-    std::cout << "B(0, 0) = " << B({0, 0}) << std::endl;
-
-    // // Testing the get function of matrix class
-    // std::cout << "B.get(0, 0) = " << B.get({0, 0}) << std::endl;
-
-    // Testing the * operator of matrix class with a vector
-    Vector<double> v14({1, 2, 3});
-    auto v15 = B * v14;
-    v15.info();
-
-    // Testing the bicgstab function
-    Matrix<double> A2(4, 4);
-    A2[{0, 0}] = 2.0;
-    A2[{0, 1}] = 2.0;
-    // A2[{0, 2}] = 0.0;
-    A2[{0, 3}] = 1.0;
-
-    A2[{1, 0}] = 3.0;
-    // A2[{1, 1}] = 4.0;
-    // A2[{1, 2}] = 1.0;
-    A2[{1, 3}] = 2.0;
-
-    // A2[{2, 0}] = 0.0;
-    A2[{2, 1}] = 1.0;
-    A2[{2, 2}] = 1.0;
-    A2[{2, 3}] = 1.0;
-    
-    // A2[{3, 0}] = 0.0;
-    A2[{3, 1}] = 2.0;
-    A2[{3, 2}] = 1.0;
-    // A2[{3, 3}] = 4.0;
-    A2.info();
-    Vector<double> b2({-1, -0.5, -1, 3});
-    Vector<double> x2({0, 0, 0, 0});
-
-    auto iterations = bicgstab(A2, b2, x2, 1e-6);
-    std::cout << "bicgstab iterations: " << iterations << std::endl;
-    
     // Your testing of the simplest walker class starts here
+    // Object of the class SimpleWalker
+    double slope = 0.009; // Slope of the ramp
+    double t0 = 0.0; // Initial time
+    Vector<double> y0 ({0.4, 0.2, 0.0, -0.2}); // Initial conditions
+    SimplestWalker<double> walker(y0, t0, slope);
+
+    // Simulation parameters
+    double h = 0.001; // Step size
+    double tmax = 2.0; // Final time
+    int n_steps = (tmax - t0) / h; // Number of steps
+
+    // Simulation loop
+    for (int i = 0; i < n_steps; i++) 
+    {
+        walker.step(h);
+        walker.info();
+    }
+
+    // Print the final information of the walker
+    walker.info();
+
 
     return 0;
 }
